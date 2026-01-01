@@ -6,4 +6,4 @@ matplotlib
 pillow
 timm
 fastapi
-fastapi[standard]
+uvicorn
