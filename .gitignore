@@ -1,1 +1,3 @@
 dataset/
+models/banana_ripness_predictor.pth
+models/best_vit_model.pth
