@@ -40,7 +40,7 @@ def _load_model():
         _device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         _model = BananaViTRegressor().to(_device)
         
-        checkpoint_path = "models/banana_ripness_predictor.pth"
+        checkpoint_path = "../models/banana_ripness_predictor.pth"
         checkpoint = torch.load(checkpoint_path, map_location=_device, weights_only=False)
         _model.load_state_dict(checkpoint['model_state_dict'])
         _model.eval()
