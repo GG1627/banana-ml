@@ -1,8 +1,10 @@
+--index-url https://download.pytorch.org/whl/cpu
+torch
+torchvision
 kagglehub
 scikit-learn
 pandas
 numpy
-matplotlib
 pillow
 timm
 fastapi

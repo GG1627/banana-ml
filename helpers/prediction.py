@@ -29,20 +29,31 @@ class BananaViTRegressor(nn.Module):
         features = self.vit(x)
         return self.regressor(features)
 
-# Load model
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-model = BananaViTRegressor().to(device)
+# Global model variable (lazy loaded)
+_model = None
+_device = None
 
-checkpoint_path = "models/banana_ripness_predictor.pth"
-checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=False)
-model.load_state_dict(checkpoint['model_state_dict'])
-model.eval()
-
-print(f"✅ Model loaded! (Epoch {checkpoint['epoch']}, MAE: {checkpoint['mae']:.4f})")
+def _load_model():
+    """Lazy load the model on first use"""
+    global _model, _device
+    if _model is None:
+        _device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        _model = BananaViTRegressor().to(_device)
+        
+        checkpoint_path = "models/banana_ripness_predictor.pth"
+        checkpoint = torch.load(checkpoint_path, map_location=_device, weights_only=False)
+        _model.load_state_dict(checkpoint['model_state_dict'])
+        _model.eval()
+        
+        print(f"✅ Model loaded! (Epoch {checkpoint['epoch']}, MAE: {checkpoint['mae']:.4f})")
+    
+    return _model, _device
 
 # Prediction function
 def predict(image_path):
     """Predict days until banana is rotten"""
+    model, device = _load_model()
+    
     image = Image.open(image_path).convert('RGB')
     transform = transforms.Compose([
         transforms.Resize((224, 224)),
