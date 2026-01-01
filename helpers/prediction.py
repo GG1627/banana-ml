@@ -3,7 +3,7 @@ import torch.nn as nn
 import timm
 from torchvision import transforms
 from PIL import Image
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 import os
 
 # Model definition (needed to load the state dict)
@@ -78,10 +78,10 @@ if __name__ == "__main__":
         
         # Show image with prediction
         image = Image.open(image_path)
-        plt.imshow(image)
-        plt.title(f"Predicted days left until rotten: {days_left:.2f} days")
-        plt.axis('off')
-        plt.show()
+        # plt.imshow(image)
+        # plt.title(f"Predicted days left until rotten: {days_left:.2f} days")
+        # plt.axis('off')
+        # plt.show()
         
         print(f"\n🍌 Prediction: {days_left:.2f} days until rotten")
         
