@@ -47,6 +47,8 @@ async def root():
 @app.post("/predict", response_model=Dict[str, str])
 async def predict_banana_ripeness(file: UploadFile = File(...)):
 
+    temp_path = None  # Initialize outside try block
+    
     try:
         # validate file type
         if not file.filename.lower().endswith((".jpg", ".jpeg", ".png")):
@@ -58,27 +60,33 @@ async def predict_banana_ripeness(file: UploadFile = File(...)):
         # use secure temporary file
         with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as temp_file:
             temp_file.write(contents)
-            temp_path = temp_file.name
+            temp_path = temp_file.name  # Store the path BEFORE exiting the with block
 
+        # Now use temp_path (the string path) instead of temp_file (the closed file object)
         try:
-            # prediction function
-            days_left = predict(temp_file)
+            # prediction function - pass the PATH string, not the file object
+            days_left = predict(temp_path)
 
-            # get stauts
+            # get status
             status = get_status(days_left)
 
             return {
-                "predictions": "2.f",
+                "predictions": str(days_left),  # Also fix: convert to string, don't use hardcoded "2.f"
                 "status": status,
                 "message": "Banana ripeness prediction successful"
             }
 
         finally:
+            # Clean up temp file using the PATH string
             import os
-            if os.path.exists(temp_file):
-                os.remove(temp_file)
+            if temp_path and os.path.exists(temp_path):
+                os.remove(temp_path)
 
     except Exception as e:
+        # Make sure to clean up even on error
+        import os
+        if temp_path and os.path.exists(temp_path):
+            os.remove(temp_path)
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/health")
