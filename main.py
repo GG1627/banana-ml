@@ -47,47 +47,88 @@ async def root():
 @app.post("/predict", response_model=Dict[str, str])
 async def predict_banana_ripeness(file: UploadFile = File(...)):
 
-    temp_path = None  # Initialize outside try block
+    temp_path = None
     
     try:
-        # validate file type
-        if not file.filename.lower().endswith((".jpg", ".jpeg", ".png")):
-            raise HTTPException(status_code=400, detail="Unsupported file type. Please upload a JPG or PNG image.")
+        # More lenient file type validation
+        if file.filename:
+            file_ext = file.filename.lower().split('.')[-1] if '.' in file.filename else ''
+            if file_ext not in ["jpg", "jpeg", "png"]:
+                raise HTTPException(status_code=400, detail="Unsupported file type. Please upload a JPG or PNG image.")
+        
+        # Check content type as fallback
+        if file.content_type and not file.content_type.startswith('image/'):
+            raise HTTPException(status_code=400, detail="File must be an image.")
 
         # read file bytes
         contents = await file.read()
+        
+        if len(contents) == 0:
+            raise HTTPException(status_code=400, detail="Empty file received.")
 
         # use secure temporary file
         with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as temp_file:
             temp_file.write(contents)
-            temp_path = temp_file.name  # Store the path BEFORE exiting the with block
+            temp_path = temp_file.name
 
-        # Now use temp_path (the string path) instead of temp_file (the closed file object)
         try:
-            # prediction function - pass the PATH string, not the file object
+            # Log for debugging
+            import os
+            print(f"Processing image: {temp_path}, size: {os.path.getsize(temp_path)} bytes")
+            
+            # prediction function - pass the PATH string
             days_left = predict(temp_path)
+            
+            print(f"Prediction successful: {days_left} days")
 
             # get status
             status = get_status(days_left)
 
             return {
-                "predictions": str(days_left),  # Also fix: convert to string, don't use hardcoded "2.f"
+                "predictions": str(days_left),
                 "status": status,
                 "message": "Banana ripeness prediction successful"
             }
 
+        except FileNotFoundError as e:
+            import traceback
+            print(f"File not found error: {str(e)}")
+            print(traceback.format_exc())
+            raise HTTPException(status_code=500, detail=f"Model or image file not found: {str(e)}")
+        except Exception as predict_error:
+            # Log the prediction error with full traceback
+            import traceback
+            print(f"Prediction error: {str(predict_error)}")
+            print(traceback.format_exc())
+            raise HTTPException(status_code=500, detail=f"Prediction failed: {str(predict_error)}")
+
         finally:
-            # Clean up temp file using the PATH string
+            # Clean up temp file
             import os
             if temp_path and os.path.exists(temp_path):
-                os.remove(temp_path)
+                try:
+                    os.remove(temp_path)
+                except Exception as cleanup_error:
+                    print(f"Warning: Could not delete temp file: {cleanup_error}")
 
+    except HTTPException:
+        # Re-raise HTTP exceptions as-is
+        raise
     except Exception as e:
-        # Make sure to clean up even on error
+        # Log the full error with traceback
+        import traceback
+        print(f"Upload error: {str(e)}")
+        print(traceback.format_exc())
+        
+        # Clean up on error
         import os
         if temp_path and os.path.exists(temp_path):
-            os.remove(temp_path)
-        raise HTTPException(status_code=500, detail=str(e))
+            try:
+                os.remove(temp_path)
+            except:
+                pass
+            
+        raise HTTPException(status_code=500, detail=f"Server error: {str(e)}")
 
 @app.get("/health")
 async def health():
